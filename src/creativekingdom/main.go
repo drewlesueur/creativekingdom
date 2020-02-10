@@ -1,5 +1,7 @@
 // TODO: you need tls for websockets to work somewhat reliably in practice
 // Also fall back to http, longpolling etc if there are network issues!
+// TODO: put timeout for any touch!
+// TODO: remove player when conn leaves!
 package main
 
 import "net/http"
@@ -156,6 +158,7 @@ func main() {
     inputCh := make(chan []byte, 1000)
     updateClientsCh := make(chan []byte, 1000)
     newClientsCh := make(chan *websocket.Conn, 1000)
+    closeClientCh := make(chan *websocket.Conn, 1000)
 	//ticker := time.NewTicker(500 * time.Millisecond)
     playersById = map[string]*Player{}
     gameState = &GameState{Players: []*Player{}}
@@ -194,10 +197,25 @@ func main() {
                         if err != nil {
                             // TODO: figure out how to remove the player and the conn!
                             log.Printf("client write error: %v", err) 
+                            closeClientCh <- c
                         }
                     }    
                 case conn := <- newClientsCh:
                     conns = append(conns, conn)
+                case conn := <- closeClientCh:
+                    foundIndex := -1
+                    for i, c := range conns {
+                        if c == conn {
+                            foundIndex = i
+                            break 
+                        }
+                    }
+                    if foundIndex != -1 {
+                        // TODO look at possible memory leak  
+                        // https://github.com/golang/go/wiki/SliceTricks
+                        conns[foundIndex] = conns[len(conns)-1] 
+                        conns = conns[:len(conns)-1]
+                    }
                 // TODO: delete a conn
             }
         } 

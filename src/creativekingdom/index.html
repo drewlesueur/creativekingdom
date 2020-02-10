@@ -9,11 +9,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <canvas id=canvas_el style="background-color: #87CEEB; image-rendering: pixelated"></canvas>
 <div id=status_el style="position: absolute; top: 0; left: 0">Hello</div>
+<div id=status2_el style="position: absolute; top: 40px; left: 0">Hello</div>
 
 <script>
 
 var frameCount = 0
 var statusEl = document.getElementById("status_el")
+var status2El = document.getElementById("status2_el")
 setInterval(function() {
     console.log("here")
     statusEl.innerHTML = frameCount + "FPS" 
@@ -124,7 +126,7 @@ function render(s) {
         var p = s.Players[i]
         //d.fillRect(Math.round(p.X), Math.round(p.Y), 10, 10) 
         //d.fillText("Hello", Math.round(p.X), Math.round(p.Y)) 
-        d.font = "40px Arial"
+        d.font = "60px Arial"
         //d.fillText("😸", Math.round(p.X), Math.round(p.Y)) 
         //d.fillText("🐉", Math.round(p.X), Math.round(p.Y)) 
         d.fillText("🍄", Math.round(p.X), Math.round(p.Y)) 
@@ -134,62 +136,55 @@ function render(s) {
 }
 
 
-var startX
-var startY
-var lastX
-var lastY
+
+function calcTouch(type, e) {
+    status2El.innerHTML = "calcTouch " + type + " " + "touches: " + e.touches.length + " " + Date.now()
+    controlState = 0
+    player.LeftPressed = false
+    player.RightPressed = false
+    player.UpPressed = false
+    player.DownPressed = false
+    player.JumpPressed = false
+
+    for (var i=0; i < e.touches.length; i++) {
+        console.log(innerWidth, e.touches[i].pageX, e.touches[i].clientX)
+        var x = e.touches[i].pageX
+        var left = innerWidth / 3
+        var middle = left * 2
+        var right = left * 3
+
+        if (x < left) {
+            player.JumpPressed = true
+            continue
+        }
+
+        if (x < middle) {
+            player.LeftPressed = true
+            continue
+        }
+
+        if (x <= right) {
+            player.RightPressed = true
+            continue
+        }
+    }
+
+    processAndSendPlayer()
+}
 
 //https://stackoverflow.com/questions/49500339/cant-prevent-touchmove-from-scrolling-window-on-ios
 document.addEventListener('touchstart', function(e) {
     e.preventDefault() 
-    startX = e.touches[0].pageX
-    startY = e.touches[0].pageY
-    lastX = startX
-    lastY = startY
+    calcTouch("start", e)
 }, {passive: false})
 
 document.addEventListener('touchmove', function(e) {
     e.preventDefault() 
-    e.stopPropagation() 
-    var x = e.touches[0].pageX
-    var y = e.touches[0].pageY
-
-    var xDiff = Math.abs(startX = x)
-    var yDiff = Math.abs(startY = y)
-
-    var moveBoth = false
-    if (Math.abs(xDiff - yDiff) < 10) {
-        moveX = true
-        moveY = true
-    }
-
-
-
-    if (x < startX) {
-        player.LeftPressed = true  
-    } else if (x > lastX) {
-        player.RightPressed = true  
-    }
-
-    if (y < startY) {
-        player.UpPressed = true
-    } else if (y > lastY) {
-        player.DownPressed = true
-    }
-    lastX = x
-    lastY = y
-
-    processAndSendPlayer()
 }, {passive: false})
 
-document.body.ontouchend = function(e) {
-    player.LeftPressed = 0
-    player.RightPressed = 0
-    player.UpPressed = 0
-    player.DownPressed = 0
-    player.JumpPressed = 0
-    processAndSendPlayer()
-}
+document.addEventListener('touchend', function(e) {
+    calcTouch("end", e)
+}, {passive: true})
 
 
 </script>
