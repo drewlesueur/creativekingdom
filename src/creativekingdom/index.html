@@ -102,6 +102,7 @@ w.onopen = function(e) {
 }
 w.onmessage = function(e) {
     var gameState = JSON.parse(e.data)
+    window.gameState = gameState
     render(gameState)
 }
 

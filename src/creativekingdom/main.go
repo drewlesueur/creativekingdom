@@ -11,14 +11,15 @@ import "encoding/json"
 import "math"
 import "github.com/gorilla/websocket"
 
-func readMessages() {
-
-}
-
-// PlayerControlState
-
-
 type Player struct {	
+    VelocityY float64
+    VelocityX float64
+
+    IsJumping bool
+    JumpStartTime time.Time
+    JumpAccelerationY float64
+    // TODO: array of accelerations?!
+
 	ID string
 	// Bitmask: Jump Left Right
 	ControlState int
@@ -39,6 +40,9 @@ var conns []*websocket.Conn
 var gameState *GameState
 
 // objects too?
+
+// per second per second
+var gravityAccelerationMS2 float64 = 0.004
 
 var moveRatePerMs = 0.2
 func processGame() bool {
@@ -67,6 +71,43 @@ func processGame() bool {
 
         if (p.ControlState & 8) == 8 {
             p.Y += (elapsedMS * moveRatePerMs)
+            dirty = true
+        }
+
+        if (p.ControlState & 16) == 16 {
+            if !p.IsJumping {
+                p.IsJumping = true 
+                p.JumpStartTime = newTime
+                p.JumpAccelerationY = -0.006
+            } else if newTime.Sub(p.JumpStartTime) >= (200 * time.Millisecond) {
+                p.JumpAccelerationY = 0
+                 
+            }
+            p.VelocityY += p.JumpAccelerationY * elapsedMS
+
+            //log.Printf("jumping velocity: %v", p.VelocityY)
+            dirty = true
+        } else {
+            if (p.IsJumping) {
+                p.JumpAccelerationY = 0 
+                p.IsJumping = false
+                dirty = true
+            }
+        }
+
+
+        if p.Y < 100 {
+            // TODO: only if something stable isn't under 
+            p.VelocityY += gravityAccelerationMS2 * elapsedMS
+            dirty = true
+        }
+
+        if p.VelocityY != 0 {
+            p.Y += p.VelocityY * elapsedMS 
+            if p.Y > 100 {
+                p.Y = 100 
+                p.VelocityY = 0
+            }
             dirty = true
         }
     }
@@ -115,6 +156,7 @@ func main() {
     updateClientsCh := make(chan []byte, 1000)
     newClientsCh := make(chan *websocket.Conn, 1000)
 	ticker := time.NewTicker(20 * time.Millisecond)
+	//ticker := time.NewTicker(500 * time.Millisecond)
     playersById = map[string]*Player{}
     gameState = &GameState{Players: []*Player{}}
 
