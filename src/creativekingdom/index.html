@@ -1,0 +1,177 @@
+<!doctype html>
+
+<style>
+* {
+    margin: 0;
+    padding: 0;
+}
+</style>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<canvas id=canvas_el style="background-color: #87CEEB; image-rendering: pixelated"></canvas>
+
+<script>
+
+
+
+var c = document.getElementById("canvas_el")
+c.style.width = innerWidth + "px"
+c.style.height = innerHeight + "px"
+c.width = innerWidth / 4
+c.height = innerHeight / 4
+var d = c.getContext("2d")
+
+var lastMessage = ""
+function keyHandler(state) {
+    return function(e) {
+        e.preventDefault()
+        var changed = false
+        switch (e.code) {
+            case "ArrowLeft":
+                player.LeftPressed = state
+                changed = true
+                break
+            case "ArrowRight":
+                player.RightPressed = state
+                changed = true
+                break
+            case "ArrowUp":
+                player.UpPressed = state
+                changed = true
+                break
+            case "ArrowDown":
+                player.DownPressed = state
+                changed = true
+                break
+            case "Space":
+                player.JumpPressed = state
+                changed = true
+                break
+        }
+
+        if (changed) {
+            processAndSendPlayer()
+        }
+    }
+}
+function processAndSendPlayer() {
+    if (!ready) {
+        return 
+    }
+    controlState = 0
+    if (player.RightPressed) {
+        controlState = (controlState | 1)
+    }
+    if (player.LeftPressed) {
+        controlState = (controlState | 2)
+    }
+    if (player.UpPressed) {
+        controlState = (controlState | 4)
+    }
+    if (player.DownPressed) {
+        controlState = (controlState | 8)
+    }
+    if (player.JumpPressed) {
+        controlState = (controlState | 16)
+    }
+
+    msg = player.ID + "|" + controlState
+    if (lastMessage != msg) {
+        console.log(msg)
+        w.send(msg)
+        lastMessage = msg
+    }
+}
+document.addEventListener('keydown', keyHandler(true))
+document.addEventListener('keyup', keyHandler(false))
+
+
+var w = new WebSocket("ws://" + location.host + "/ws")
+
+var player = {
+    ID: Date.now() + Math.floor(Math.random() * 10000),
+    LeftPressed: false,
+    RightPressed: false,
+    JumpPressed: false,
+}
+
+var ready = false
+w.onopen = function(e) {
+    console.log("open!", e)
+    w.send(player.ID + "|" + 0)
+    ready = true
+}
+w.onmessage = function(e) {
+    var gameState = JSON.parse(e.data)
+    render(gameState)
+}
+
+function render(s) {
+    // will clear canvas
+    c.width = c.width
+
+    for (var i=0; i < s.Players.length; i++) {
+        var p = s.Players[i]
+        d.fillRect(Math.round(p.X), Math.round(p.Y), 10, 10) 
+    }
+}
+
+
+var startX
+var startY
+var lastX
+var lastY
+
+//https://stackoverflow.com/questions/49500339/cant-prevent-touchmove-from-scrolling-window-on-ios
+document.addEventListener('touchstart', function(e) {
+    e.preventDefault() 
+    startX = e.touches[0].pageX
+    startY = e.touches[0].pageY
+    lastX = startX
+    lastY = startY
+}, {passive: false})
+
+document.addEventListener('touchmove', function(e) {
+    e.preventDefault() 
+    e.stopPropagation() 
+    var x = e.touches[0].pageX
+    var y = e.touches[0].pageY
+
+    var xDiff = Math.abs(startX = x)
+    var yDiff = Math.abs(startY = y)
+
+    var moveBoth = false
+    if (Math.abs(xDiff - yDiff) < 10) {
+        moveX = true
+        moveY = true
+    }
+
+
+
+    if (x < startX) {
+        player.LeftPressed = true  
+    } else if (x > lastX) {
+        player.RightPressed = true  
+    }
+
+    if (y < startY) {
+        player.UpPressed = true
+    } else if (y > lastY) {
+        player.DownPressed = true
+    }
+    lastX = x
+    lastY = y
+
+    processAndSendPlayer()
+}, {passive: false})
+
+document.body.ontouchend = function(e) {
+    player.LeftPressed = 0
+    player.RightPressed = 0
+    player.UpPressed = 0
+    player.DownPressed = 0
+    player.JumpPressed = 0
+    processAndSendPlayer()
+}
+
+
+</script>
