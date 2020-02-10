@@ -42,9 +42,9 @@ var gameState *GameState
 // objects too?
 
 // per second per second
-var gravityAccelerationMS2 float64 = 0.004
+var gravityAccelerationMS2 float64 = 0.008
 
-var moveRatePerMs = 0.2
+var moveRatePerMs = 0.6
 func processGame() bool {
 	dirty := false
 
@@ -78,10 +78,9 @@ func processGame() bool {
             if !p.IsJumping {
                 p.IsJumping = true 
                 p.JumpStartTime = newTime
-                p.JumpAccelerationY = -0.006
-            } else if newTime.Sub(p.JumpStartTime) >= (200 * time.Millisecond) {
+                p.JumpAccelerationY = -0.016
+            } else if newTime.Sub(p.JumpStartTime) >= (100 * time.Millisecond) {
                 p.JumpAccelerationY = 0
-                 
             }
             p.VelocityY += p.JumpAccelerationY * elapsedMS
 
@@ -96,7 +95,8 @@ func processGame() bool {
         }
 
 
-        if p.Y < 100 {
+        var tmpFloor float64 = 1000
+        if p.Y < tmpFloor {
             // TODO: only if something stable isn't under 
             p.VelocityY += gravityAccelerationMS2 * elapsedMS
             dirty = true
@@ -104,8 +104,8 @@ func processGame() bool {
 
         if p.VelocityY != 0 {
             p.Y += p.VelocityY * elapsedMS 
-            if p.Y > 100 {
-                p.Y = 100 
+            if p.Y > tmpFloor {
+                p.Y = tmpFloor 
                 p.VelocityY = 0
             }
             dirty = true
@@ -149,13 +149,13 @@ func handlePlayerInput(playerInput []byte) bool {
 
 
 func main() {
+	ticker := time.NewTicker(30 * time.Millisecond)
 	lastTime := time.Now()	
 	startTime := lastTime
     _ = startTime
     inputCh := make(chan []byte, 1000)
     updateClientsCh := make(chan []byte, 1000)
     newClientsCh := make(chan *websocket.Conn, 1000)
-	ticker := time.NewTicker(20 * time.Millisecond)
 	//ticker := time.NewTicker(500 * time.Millisecond)
     playersById = map[string]*Player{}
     gameState = &GameState{Players: []*Player{}}

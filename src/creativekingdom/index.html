@@ -8,16 +8,25 @@
 </style>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <canvas id=canvas_el style="background-color: #87CEEB; image-rendering: pixelated"></canvas>
+<div id=status_el style="position: absolute; top: 0; left: 0">Hello</div>
 
 <script>
 
+var frameCount = 0
+var statusEl = document.getElementById("status_el")
+setInterval(function() {
+    console.log("here")
+    statusEl.innerHTML = frameCount + "FPS" 
+    frameCount = 0
+}, 1000)
 
 
 var c = document.getElementById("canvas_el")
 c.style.width = innerWidth + "px"
 c.style.height = innerHeight + "px"
-c.width = innerWidth / 4
-c.height = innerHeight / 4
+// retina
+c.width = innerWidth * 2
+c.height = innerHeight * 2
 var d = c.getContext("2d")
 
 var lastMessage = ""
@@ -107,13 +116,21 @@ w.onmessage = function(e) {
 }
 
 function render(s) {
+    start = Date.now()
     // will clear canvas
     c.width = c.width
 
     for (var i=0; i < s.Players.length; i++) {
         var p = s.Players[i]
-        d.fillRect(Math.round(p.X), Math.round(p.Y), 10, 10) 
+        //d.fillRect(Math.round(p.X), Math.round(p.Y), 10, 10) 
+        //d.fillText("Hello", Math.round(p.X), Math.round(p.Y)) 
+        d.font = "40px Arial"
+        //d.fillText("😸", Math.round(p.X), Math.round(p.Y)) 
+        //d.fillText("🐉", Math.round(p.X), Math.round(p.Y)) 
+        d.fillText("🍄", Math.round(p.X), Math.round(p.Y)) 
     }
+    frameCount += 1
+    console.log(Date.now() - start)
 }
 
 
