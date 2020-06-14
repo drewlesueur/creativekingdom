@@ -9,8 +9,9 @@ import "log"
 import "time"
 import "strings"
 import "strconv"
-import "encoding/json"
 import "math"
+import "bytes"
+import "fmt"
 import "github.com/gorilla/websocket"
 
 type Player struct {	
@@ -28,6 +29,7 @@ type Player struct {
 	Color string
     X float64
     Y float64
+    Emoji string
 }
 
 type GameState struct {
@@ -124,6 +126,11 @@ func handlePlayerInput(playerInput []byte) bool {
     }
     playerID := parts[0]
     controlStateString := parts[1]
+
+    emoji := ""
+    if len(parts) >= 3 {
+        emoji = parts[2] 
+    }
     controlState, err := strconv.Atoi(controlStateString)
     if err != nil {
         return false
@@ -131,19 +138,23 @@ func handlePlayerInput(playerInput []byte) bool {
     
     player, ok := playersById[playerID]
     if !ok {
+        log.Printf("Yay new player and the emoji is %s", emoji)
         player = &Player{
             ID: parts[0],
             Color: "black",
             ControlState: controlState,
-            X: 5,
+            X: 20,
             Y: 5,
+            Emoji: emoji,
         } 
         gameState.Players = append(gameState.Players, player)
         playersById[player.ID] = player
     } else {
         player.ControlState = controlState
+        if emoji != "" {
+            player.Emoji = emoji 
+        }
     }
-
 
     return true
 }
@@ -152,6 +163,8 @@ func handlePlayerInput(playerInput []byte) bool {
 
 func main() {
 	ticker := time.NewTicker(30 * time.Millisecond)
+	//ticker := time.NewTicker(30 * time.Millisecond)
+	//ticker := time.NewTicker(60 * time.Millisecond)
 	lastTime := time.Now()	
 	startTime := lastTime
     _ = startTime
@@ -175,13 +188,14 @@ func main() {
             }
             //log.Printf("game loop: dirty: %t, num players: %d", dirty, len(gameState.Players))
             if dirty {
-                gameStateJSON, err := json.Marshal(gameState) 
-                log.Printf("game json: %v", string(gameStateJSON))
-                if err != nil {
-                    log.Printf("error encoding game state: %v", err) 
-                    continue
+                //gameStateJSON, err := json.Marshal(gameState) 
+                var buf bytes.Buffer
+                for _, p := range gameState.Players {
+                    buf.Write([]byte(fmt.Sprintf("%0.0f|%0.0f|%s\n", p.X, p.Y, p.Emoji )))     
                 }
-                updateClientsCh <- gameStateJSON
+                gameStateBytes := buf.Bytes()
+                log.Printf("%s\n=============================\n\n", string(gameStateBytes))
+                updateClientsCh <- gameStateBytes
             }
 		}
 	}()
@@ -240,7 +254,7 @@ func main() {
         newClientsCh <- conn
 		for {
             messageType, p, err := conn.ReadMessage()
-            log.Printf("message type: %v", messageType)
+            log.Printf("message type: %v, message: %s", messageType, string(p))
             if err != nil {
                 log.Printf("error reading message: %v", err)
                 return 

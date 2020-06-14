@@ -17,7 +17,6 @@ var frameCount = 0
 var statusEl = document.getElementById("status_el")
 var status2El = document.getElementById("status2_el")
 setInterval(function() {
-    console.log("here")
     statusEl.innerHTML = frameCount + "FPS" 
     frameCount = 0
 }, 1000)
@@ -85,9 +84,8 @@ function processAndSendPlayer() {
         controlState = (controlState | 16)
     }
 
-    msg = player.ID + "|" + controlState
+    msg = player.ID + "|" + controlState + "|" + player.Emoji
     if (lastMessage != msg) {
-        console.log(msg)
         w.send(msg)
         lastMessage = msg
     }
@@ -96,43 +94,45 @@ document.addEventListener('keydown', keyHandler(true))
 document.addEventListener('keyup', keyHandler(false))
 
 
-var w = new WebSocket("ws://" + location.host + "/ws")
-
 var player = {
     ID: Date.now() + Math.floor(Math.random() * 10000),
     LeftPressed: false,
     RightPressed: false,
     JumpPressed: false,
+    Emoji: "A"
 }
+player.Emoji = prompt("Character?", "🍄")
+var w = new WebSocket("ws://" + location.host + "/ws?emoji=" + encodeURIComponent(player.Emoji))
+
 
 var ready = false
 w.onopen = function(e) {
-    console.log("open!", e)
-    w.send(player.ID + "|" + 0)
     ready = true
+    processAndSendPlayer()
 }
 w.onmessage = function(e) {
-    var gameState = JSON.parse(e.data)
-    window.gameState = gameState
+    window.gameState = e.data
     render(gameState)
 }
 
 function render(s) {
-    start = Date.now()
     // will clear canvas
     c.width = c.width
 
-    for (var i=0; i < s.Players.length; i++) {
-        var p = s.Players[i]
+    objs = s.split("\n")
+    for (var i=0; i < objs.length; i++) {
+        var p = objs[i]
+        var parts = p.split("|")
+
         //d.fillRect(Math.round(p.X), Math.round(p.Y), 10, 10) 
         //d.fillText("Hello", Math.round(p.X), Math.round(p.Y)) 
         d.font = "60px Arial"
         //d.fillText("😸", Math.round(p.X), Math.round(p.Y)) 
         //d.fillText("🐉", Math.round(p.X), Math.round(p.Y)) 
-        d.fillText("🍄", Math.round(p.X), Math.round(p.Y)) 
+        //d.fillText("🍄", Math.round(p.X), Math.round(p.Y)) 
+        d.fillText(parts[2], Math.round(parts[0]), Math.round(parts[1])) 
     }
     frameCount += 1
-    console.log(Date.now() - start)
 }
 
 
@@ -147,7 +147,6 @@ function calcTouch(type, e) {
     player.JumpPressed = false
 
     for (var i=0; i < e.touches.length; i++) {
-        console.log(innerWidth, e.touches[i].pageX, e.touches[i].clientX)
         var x = e.touches[i].pageX
         var left = innerWidth / 3
         var middle = left * 2
