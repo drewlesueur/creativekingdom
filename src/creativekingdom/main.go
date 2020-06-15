@@ -30,6 +30,7 @@ type Player struct {
     X float64
     Y float64
     Emoji string
+    Conn *websocket.Conn
 }
 
 type GameState struct {
@@ -132,8 +133,8 @@ func processGame() bool {
 
     return dirty
 }
-func handlePlayerInput(playerInput []byte) bool {
-    p := string(playerInput) 
+func handlePlayerInput(playerInput PlayerInput) bool {
+    p := string(playerInput.Payload) 
     parts := strings.Split(p, "|")
     if len(parts) < 2 {
         return false
@@ -160,6 +161,7 @@ func handlePlayerInput(playerInput []byte) bool {
             X: 20,
             Y: 5,
             Emoji: emoji,
+            Conn: playerInput.Conn,
         } 
         gameState.Players = append(gameState.Players, player)
         playersById[player.ID] = player
@@ -182,9 +184,8 @@ func main() {
 	lastTime := time.Now()	
 	startTime := lastTime
     _ = startTime
-    inputCh := make(chan []byte, 1000)
+    inputCh := make(chan PlayerInput, 1000)
     updateClientsCh := make(chan []byte, 1000)
-    newClientsCh := make(chan *websocket.Conn, 1000)
     closeClientCh := make(chan *websocket.Conn, 1000)
 	//ticker := time.NewTicker(500 * time.Millisecond)
     playersById = map[string]*Player{}
@@ -219,30 +220,33 @@ func main() {
         for {
             select {
                 case gameStateJSON := <- updateClientsCh:
-                    for _, c := range conns {
+                    for _, p := range gameState.Players {
                         //err := c.WriteMessage(0, gameStateJSON) 
-                        err := c.WriteMessage(1, gameStateJSON) 
+                        err := p.Conn.WriteMessage(1, gameStateJSON) 
                         if err != nil {
-                            // TODO: figure out how to remove the player and the conn!
                             log.Printf("client write error: %v", err) 
-                            closeClientCh <- c
+                            // TODO: you can close inline here and it will be more efficient
+                            closeClientCh <- p.Conn
                         }
                     }    
-                case conn := <- newClientsCh:
-                    conns = append(conns, conn)
                 case conn := <- closeClientCh:
+                    log.Printf("someone disconnected====")
                     foundIndex := -1
-                    for i, c := range conns {
-                        if c == conn {
+                    var foundPlayer *Player
+                    for i, p := range gameState.Players {
+                        if p.Conn == conn {
+                            log.Printf("disconnected index is %d====", i)
                             foundIndex = i
+                            foundPlayer = p
                             break 
                         }
                     }
                     if foundIndex != -1 {
                         // TODO look at possible memory leak  
                         // https://github.com/golang/go/wiki/SliceTricks
-                        conns[foundIndex] = conns[len(conns)-1] 
-                        conns = conns[:len(conns)-1]
+                        gameState.Players[foundIndex] = gameState.Players[len(gameState.Players)-1] 
+                        gameState.Players = gameState.Players[:len(gameState.Players)-1]
+                        delete(playersById, foundPlayer.ID)
                     }
                 // TODO: delete a conn
             }
@@ -265,7 +269,6 @@ func main() {
 			log.Printf("error upgrading: %v", err)
 			return
 		}
-        newClientsCh <- conn
 		for {
             messageType, p, err := conn.ReadMessage()
             log.Printf("message type: %v, message: %s", messageType, string(p))
@@ -273,7 +276,7 @@ func main() {
                 log.Printf("error reading message: %v", err)
                 return 
             }
-            inputCh <- p
+            inputCh <- PlayerInput{Payload: p, Conn: conn}
 		}
     })
 
@@ -284,4 +287,9 @@ func main() {
     }
     log.Printf("Listening on " + addr)
     log.Fatal(srv.ListenAndServe())
+}
+
+type PlayerInput struct {
+    Payload []byte    
+    Conn *websocket.Conn
 }
