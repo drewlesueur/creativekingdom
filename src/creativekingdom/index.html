@@ -35,6 +35,7 @@ function keyHandler(state) {
     return function(e) {
         e.preventDefault()
         var changed = false
+        console.log(e.code)
         switch (e.code) {
             case "ArrowLeft":
                 player.LeftPressed = state
@@ -56,6 +57,14 @@ function keyHandler(state) {
                 player.JumpPressed = state
                 changed = true
                 break
+            case "ShiftLeft":
+                player.ActionPressed = state
+                changed = true
+                break
+            case "ShiftRight":
+                player.ActionPressed = state
+                changed = true
+                break
         }
 
         if (changed) {
@@ -68,10 +77,10 @@ function processAndSendPlayer() {
         return 
     }
     controlState = 0
-    if (player.RightPressed) {
+    if (player.LeftPressed) {
         controlState = (controlState | 1)
     }
-    if (player.LeftPressed) {
+    if (player.RightPressed) {
         controlState = (controlState | 2)
     }
     if (player.UpPressed) {
@@ -82,6 +91,9 @@ function processAndSendPlayer() {
     }
     if (player.JumpPressed) {
         controlState = (controlState | 16)
+    }
+    if (player.ActionPressed) {
+        controlState = (controlState | 32)
     }
 
     msg = player.ID + "|" + controlState + "|" + player.Emoji
@@ -98,10 +110,14 @@ var player = {
     ID: Date.now() + Math.floor(Math.random() * 10000),
     LeftPressed: false,
     RightPressed: false,
+    UpPressed: false,
+    DownPressed: false,
     JumpPressed: false,
+    ActionPressed: false,
     Emoji: "A"
 }
-player.Emoji = prompt("Character?", "🍄")
+//player.Emoji = prompt("Character?", "🍄")
+player.Emoji = "🍄"
 var w = new WebSocket("ws://" + location.host + "/ws?emoji=" + encodeURIComponent(player.Emoji))
 
 
@@ -148,21 +164,24 @@ function calcTouch(type, e) {
 
     for (var i=0; i < e.touches.length; i++) {
         var x = e.touches[i].pageX
-        var left = innerWidth / 3
-        var middle = left * 2
-        var right = left * 3
+        var a = innerWidth / 4
 
-        if (x < left) {
-            player.LeftPressed = true
-            continue
-        }
-
-        if (x < middle) {
+        if (x < a) {
             player.JumpPressed = true
             continue
         }
 
-        if (x <= right) {
+        if (x < 2*a) {
+            player.ActionPressed = true
+            continue
+        }
+
+        if (x <= 3*a) {
+            player.LeftPressed = true
+            continue
+        }
+
+        if (x <= 4*a) {
             player.RightPressed = true
             continue
         }

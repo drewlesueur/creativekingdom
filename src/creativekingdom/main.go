@@ -58,34 +58,48 @@ func processGame() bool {
 	lastTime = newTime
 
     for _, p := range gameState.Players {
-        if (p.ControlState & 1) == 1 {
-            p.X += (elapsedMS * moveRatePerMs)
-            dirty = true
-        }
 
-        if (p.ControlState & 2) == 2 {
+        // left
+        if (p.ControlState & 1) == 1 {
             p.X -= (elapsedMS * moveRatePerMs)
             dirty = true
         }
 
+        // right
+        if (p.ControlState & 2) == 2 {
+            p.X += (elapsedMS * moveRatePerMs)
+            dirty = true
+        }
+
+        // up
         if (p.ControlState & 4) == 4 {
             p.Y -= (elapsedMS * moveRatePerMs)
             dirty = true
         }
 
+        // down
         if (p.ControlState & 8) == 8 {
             p.Y += (elapsedMS * moveRatePerMs)
             dirty = true
         }
 
+
+        // jump
         if (p.ControlState & 16) == 16 {
+
             if !p.IsJumping {
                 p.IsJumping = true 
+
+                // this next 2 allows us to jump again
+                p.VelocityY = 0
+                p.JumpAccelerationY = 0
+
                 p.JumpStartTime = newTime
-                p.JumpAccelerationY = -0.016
+                p.JumpAccelerationY = (-0.016 * 1.2)
             } else if newTime.Sub(p.JumpStartTime) >= (100 * time.Millisecond) {
                 p.JumpAccelerationY = 0
             }
+
             p.VelocityY += p.JumpAccelerationY * elapsedMS
 
             //log.Printf("jumping velocity: %v", p.VelocityY)
@@ -98,7 +112,6 @@ func processGame() bool {
             }
         }
 
-
         var tmpFloor float64 = 1000
         if p.Y < tmpFloor {
             // TODO: only if something stable isn't under 
@@ -106,11 +119,13 @@ func processGame() bool {
             dirty = true
         }
 
-        if p.VelocityY != 0 {
-            p.Y += p.VelocityY * elapsedMS 
+        totalVelocity := p.VelocityY
+        if totalVelocity != 0 {
+            p.Y += totalVelocity * elapsedMS 
             if p.Y > tmpFloor {
                 p.Y = tmpFloor 
                 p.VelocityY = 0
+                p.VelocityYFromGravity = 0
             }
             dirty = true
         }
