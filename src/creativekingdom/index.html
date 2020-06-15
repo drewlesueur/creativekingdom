@@ -26,8 +26,14 @@ var c = document.getElementById("canvas_el")
 c.style.width = innerWidth + "px"
 c.style.height = innerHeight + "px"
 // retina
-c.width = innerWidth * 2
-c.height = innerHeight * 2
+//c.width = innerWidth * 2
+//c.height = innerHeight * 2
+
+c.height = 64
+var hToW = innerWidth / innerHeight
+c.width = c.height * hToW
+
+
 var d = c.getContext("2d")
 
 var lastMessage = ""
@@ -117,7 +123,8 @@ var player = {
     Emoji: "A"
 }
 //player.Emoji = prompt("Character?", "🍄")
-player.Emoji = "🍄"
+//player.Emoji = "🍄"
+player.Emoji = "y"
 var w = new WebSocket("ws://" + location.host + "/ws?emoji=" + encodeURIComponent(player.Emoji))
 
 
@@ -140,13 +147,18 @@ function render(s) {
         var p = objs[i]
         var parts = p.split("|")
 
-        //d.fillRect(Math.round(p.X), Math.round(p.Y), 10, 10) 
-        //d.fillText("Hello", Math.round(p.X), Math.round(p.Y)) 
-        d.font = "60px Arial"
-        //d.fillText("😸", Math.round(p.X), Math.round(p.Y)) 
-        //d.fillText("🐉", Math.round(p.X), Math.round(p.Y)) 
-        //d.fillText("🍄", Math.round(p.X), Math.round(p.Y)) 
-        d.fillText(parts[2], Math.round(parts[0]), Math.round(parts[1])) 
+        switch(parts[2]) {
+            case "b":
+                d.fillStyle = "blue"
+                break
+            case "y":
+                d.fillStyle = "yellow"
+                break
+        }
+
+        d.fillRect(Math.round(parts[0]), Math.round(parts[1]), 1, 1) 
+        //d.font = "60px Arial"
+        //d.fillText(parts[2], Math.round(parts[0]), Math.round(parts[1])) 
     }
     frameCount += 1
 }

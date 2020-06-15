@@ -47,9 +47,10 @@ var gameState *GameState
 // objects too?
 
 // per second per second
-var gravityAccelerationMS2 float64 = 0.008
-
-var moveRatePerMs = 0.6
+var gravityAccelerationMS2 float64 = 0.0005
+var jumpAcceleratoinRate = -gravityAccelerationMS2 * 2
+var moveRatePerMs = 0.05
+var tmpFloor float64 = 48
 func processGame() bool {
 	dirty := false
 
@@ -96,7 +97,7 @@ func processGame() bool {
                 p.JumpAccelerationY = 0
 
                 p.JumpStartTime = newTime
-                p.JumpAccelerationY = (-0.016 * 1.2)
+                p.JumpAccelerationY = jumpAcceleratoinRate
             } else if newTime.Sub(p.JumpStartTime) >= (100 * time.Millisecond) {
                 p.JumpAccelerationY = 0
             }
@@ -113,7 +114,6 @@ func processGame() bool {
             }
         }
 
-        var tmpFloor float64 = 1000
         if p.Y < tmpFloor {
             // TODO: only if something stable isn't under 
             p.VelocityY += gravityAccelerationMS2 * elapsedMS
