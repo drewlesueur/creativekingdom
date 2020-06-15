@@ -33,8 +33,22 @@ type Player struct {
     Conn *websocket.Conn
 }
 
+type Object struct {	
+    VelocityY float64
+    VelocityX float64
+	ID string
+	Color string
+    X float64
+    Y float64
+    Type string
+    Emoji string
+}
+
 type GameState struct {
     Players []*Player
+    Objects []*Object
+    // Key is x_y as integers
+    ObjectMap map[string]*Object
 }
 
 var lastTime time.Time
@@ -61,6 +75,10 @@ func processGame() bool {
 
     for _, p := range gameState.Players {
 
+        // for collision detection
+        //var startX = p.X
+        //var startY = p.Y
+
         // left
         if (p.ControlState & 1) == 1 {
             p.X -= (elapsedMS * moveRatePerMs)
@@ -85,10 +103,8 @@ func processGame() bool {
             dirty = true
         }
 
-
         // jump
         if (p.ControlState & 16) == 16 {
-
             if !p.IsJumping {
                 p.IsJumping = true 
 
@@ -110,6 +126,22 @@ func processGame() bool {
             if (p.IsJumping) {
                 p.JumpAccelerationY = 0 
                 p.IsJumping = false
+                dirty = true
+            }
+        }
+
+        if (p.ControlState & 32) == 32 {
+            xY := fmt.Sprintf("%0.0f_%0.0f", p.X, p.Y)
+            _, ok := gameState.ObjectMap[xY]
+            if !ok {
+                object := &Object{
+                    X: p.X,
+                    Y: p.Y,
+                    Type: "block",
+                    Emoji: "gray",
+                }
+                gameState.Objects = append(gameState.Objects, object)
+                gameState.ObjectMap[xY] = object
                 dirty = true
             }
         }
@@ -171,14 +203,13 @@ func handlePlayerInput(playerInput PlayerInput) bool {
             player.Emoji = emoji 
         }
     }
-
     return true
 }
 
 
 
 func main() {
-	ticker := time.NewTicker(30 * time.Millisecond)
+	ticker := time.NewTicker(24 * time.Millisecond)
 	//ticker := time.NewTicker(30 * time.Millisecond)
 	//ticker := time.NewTicker(60 * time.Millisecond)
 	lastTime := time.Now()	
@@ -189,7 +220,11 @@ func main() {
     closeClientCh := make(chan *websocket.Conn, 1000)
 	//ticker := time.NewTicker(500 * time.Millisecond)
     playersById = map[string]*Player{}
-    gameState = &GameState{Players: []*Player{}}
+    gameState = &GameState{
+        Players: []*Player{},
+        Objects: []*Object{},
+        ObjectMap: map[string]*Object{},
+    }
 
 	go func() {
         // All game state gets updated in this gofunc and no other
@@ -207,6 +242,9 @@ func main() {
                 var buf bytes.Buffer
                 for _, p := range gameState.Players {
                     buf.Write([]byte(fmt.Sprintf("%0.0f|%0.0f|%s\n", p.X, p.Y, p.Emoji )))     
+                }
+                for _, o := range gameState.Objects {
+                    buf.Write([]byte(fmt.Sprintf("%0.0f|%0.0f|%s\n", o.X, o.Y, o.Emoji )))     
                 }
                 gameStateBytes := buf.Bytes()
                 log.Printf("%s\n=============================\n\n", string(gameStateBytes))

@@ -154,6 +154,9 @@ function render(s) {
             case "y":
                 d.fillStyle = "yellow"
                 break
+            default:
+                d.fillStyle = parts[2]
+                break
         }
 
         d.fillRect(Math.round(parts[0]), Math.round(parts[1]), 1, 1) 
