@@ -125,7 +125,6 @@ func processGame() bool {
             if p.Y > tmpFloor {
                 p.Y = tmpFloor 
                 p.VelocityY = 0
-                p.VelocityYFromGravity = 0
             }
             dirty = true
         }
